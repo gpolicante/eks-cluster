@@ -1,0 +1,71 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata: 
+ name: dev-cluster
+ region: us-east-1
+
+fargateProfiles: 
+  - name: dev
+    selectors: 
+      - namespace: default 
+      - namespace: kube-system
+
+vpc: 
+ id: "IDVPC"
+ subnets: 
+   private: 
+      us-east-1a: 
+        id: "IDSUBNET"
+
+      us-east-1b: 
+        id: "IDSUBNET"
+
+      us-east-1c: 
+        id: "IDDSUBNET"
+  nat: 
+    gateway: HighlyAvailable 
+
+iam: 
+  withOIDC: true
+  serviceAccounts:
+  - metadata:
+      name: s3-reader
+      # if no namespace is set, "default" will be used;
+      # the namespace will be created if it doesn't exist already
+      namespace: default
+      labels: {aws-usage: "application"}
+    attachPolicyARNs:
+    - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+  - metadata:
+      name: cache-access
+      namespace: default
+      labels: {aws-usage: "application"}
+    attachPolicyARNs:
+    - "arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess"
+    - "arn:aws:iam::aws:policy/AmazonElastiCacheFullAccess"
+  - metadata:
+      name: cluster-autoscaler
+      namespace: kube-system
+      labels: {aws-usage: "cluster-ops"}
+    attachPolicy: # inline policy can be defined along with `attachPolicyARNs`
+      Version: "2012-10-17"
+      Statement:
+      - Effect: Allow
+        Action:
+        - "autoscaling:DescribeAutoScalingGroups"
+        - "autoscaling:DescribeAutoScalingInstances"
+        - "autoscaling:DescribeLaunchConfigurations"
+        - "autoscaling:DescribeTags"
+        - "autoscaling:SetDesiredCapacity"
+        - "autoscaling:TerminateInstanceInAutoScalingGroup"
+        Resource: '*'
+
+
+cloudWatch: 
+  clusterLogging: 
+     enableTypes: ["audit", "authenticator", "controllerManager"]
+
+secretsEncryption:
+  keyARN: "ARID...."
+
